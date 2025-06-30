@@ -29,11 +29,11 @@ def listApps():
 
     print("Registered Apps:")
     for filePath in appPathLocation.glob("*.desktop"):
-        print(filePath.name, "\t\tautostart=false")
+        print(filePath.name, "\t\tautostart=false\t\tlocation=" + str(appPathLocation))
 
     print("\nAutostart Apps:")
     for filePath in autoStartLocation.glob("*.desktop"):
-        print(filePath.name, "\t\tautostart=true")
+        print(filePath.name, "\t\tautostart=true\t\tlocation" + str(autoStartLocation))
 
 
 def deleteApp(args):
