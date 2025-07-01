@@ -65,21 +65,39 @@ def deleteApp(args):
 def extract_appimage_icon(appimage_path: Path) -> str | None:
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            subprocess.run([str(appimage_path), '--appimage-extract'],
-                           cwd=tmpdir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                [str(appimage_path), '--appimage-extract'],
+                cwd=tmpdir,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
             squashfs_root = Path(tmpdir) / 'squashfs-root'
             if not squashfs_root.exists():
                 return None
-            for icon_file in squashfs_root.rglob("*"):
-                if icon_file.suffix in (".png", ".svg", ".xpm", ".ico") and 'icon' in icon_file.name.lower():
-                    icon_dest = Path("~/.local/share/icons").expanduser().resolve()
-                    icon_dest.mkdir(parents=True, exist_ok=True)
-                    final_icon = icon_dest / f"{appimage_path.stem}{icon_file.suffix}"
-                    shutil.copy(icon_file, final_icon)
-                    return str(final_icon)
+
+            # Look for likely icon files
+            icon_file = None
+            for ext in (".png", ".svg", ".xpm", ".ico"):
+                for candidate in squashfs_root.rglob(f"*{ext}"):
+                    if 'icon' in candidate.name.lower():
+                        icon_file = candidate
+                        break
+                if icon_file:
+                    break
+
+            if not icon_file:
+                return None
+
+            # Copy the image file to ~/.local/share/icons/
+            icon_dest_dir = Path("~/.local/share/icons").expanduser().resolve()
+            icon_dest_dir.mkdir(parents=True, exist_ok=True)
+            final_icon = icon_dest_dir / f"{appimage_path.stem}{icon_file.suffix}"
+            shutil.copy(icon_file, final_icon)
+            return str(final_icon)
+
     except Exception as e:
         print("Error extracting icon from AppImage:", e)
-    return None
+        return None
 
 
 def registerApp(args: list[str]):
