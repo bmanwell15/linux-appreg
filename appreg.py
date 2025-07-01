@@ -33,7 +33,7 @@ def listApps():
 
     print("\nAutostart Apps:")
     for filePath in autoStartLocation.glob("*.desktop"):
-        print(filePath.name, "\t\tautostart=true\t\tlocation" + str(autoStartLocation))
+        print(filePath.name, "\t\tautostart=true")
 
 
 def deleteApp(args):
@@ -98,10 +98,12 @@ def registerApp(args: list[str]):
         i += 1
 
     # Copy to new destination (original left behind unless moved)
-    destinationDir = Path("~/.config/autostart").expanduser().resolve() if autostart else Path("~/Documents/Apps").expanduser().resolve()
-    destinationDir.mkdir(parents=True, exist_ok=True)
+    appDestination = Path("~/Documents/Apps").expanduser().resolve()
+    appDestination.mkdir(parents=True, exist_ok=True)
+    shutil.move(filePath, appDestination / givenName)
 
-    desktopExecPath = str(filePath)
+    appPath = appDestination / givenName
+
     iconName = iconPath
 
     # If icon is a file path, copy it
@@ -114,12 +116,12 @@ def registerApp(args: list[str]):
 
     # Create .desktop entry
     desktopContent = f"""[Desktop Entry]
-Name={givenName}
-Exec={desktopExecPath}
-Icon={iconName}
+Name="{givenName}"
+Exec="{appPath}"
+Icon="{iconName}"
 Type=Application
 Terminal={'true' if terminalProgram else 'false'}
-Categories={category}
+Categories="{category}"
 {"X-GNOME-Autostart-enabled=true" if autostart else ""}
 {"Hidden=false" if autostart else ""}
 {"NoDisplay=false" if autostart else ""}
@@ -129,6 +131,7 @@ Categories={category}
     desktopFile.parent.mkdir(parents=True, exist_ok=True)
     desktopFile.write_text(desktopContent.strip() + '\n')
     os.chmod(desktopFile, 0o755)
+    os.chmod()
     print(f"Registered app: {givenName}")
 
 if __name__ == "__main__":
