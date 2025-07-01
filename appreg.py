@@ -3,8 +3,6 @@
 import os
 import sys
 import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 
 def displayHelp():
@@ -13,7 +11,7 @@ def displayHelp():
 Commands:
     register <App-File/Folder>          Registers the app to allow it to be accessible to Kubuntu KDE
         Options:
-            -i, --icon <icon path>      Set the icon picture for the application.
+            -i, --icon <icon path>      Set the icon picture for the application (required for files).
             -c, --category <category>   Sets the category for the app.
             -n, --name <app name>       Sets the name of the app. If not set, the file/folder name will be used.
             -a, --autostart             Start the app automatically upon login.
@@ -62,42 +60,12 @@ def deleteApp(args):
     print(f"{appName} not found in known locations.")
 
 
-def extract_appimage_icon(appimage_path: Path) -> str | None:
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            subprocess.run(
-                [str(appimage_path), '--appimage-extract'],
-                cwd=tmpdir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            squashfs_root = Path(tmpdir) / 'squashfs-root'
-            if not squashfs_root.exists():
-                return None
-
-            # Look for likely icon files
-            icon_file = None
-            for ext in (".png", ".svg", ".xpm", ".ico"):
-                for candidate in squashfs_root.rglob(f"*{ext}"):
-                    if 'icon' in candidate.name.lower():
-                        icon_file = candidate
-                        break
-                if icon_file:
-                    break
-
-            if not icon_file:
-                return None
-
-            # Copy the image file to ~/.local/share/icons/
-            icon_dest_dir = Path("~/.local/share/icons").expanduser().resolve()
-            icon_dest_dir.mkdir(parents=True, exist_ok=True)
-            final_icon = icon_dest_dir / f"{appimage_path.stem}{icon_file.suffix}"
-            shutil.copy(icon_file, final_icon)
-            return str(final_icon)
-
-    except Exception as e:
-        print("Error extracting icon from AppImage:", e)
-        return None
+def find_icon_in_folder(folder: Path) -> str | None:
+    for ext in (".png", ".svg", ".xpm", ".ico"):
+        icons = list(folder.glob(f"*{ext}"))
+        if icons:
+            return str(icons[0])
+    return None
 
 
 def registerApp(args: list[str]):
@@ -144,29 +112,27 @@ def registerApp(args: list[str]):
     # Move app to destination
     appDestination = Path("~/Documents/Apps").expanduser().resolve()
     appDestination.mkdir(parents=True, exist_ok=True)
-    shutil.move(filePath, appDestination / givenName)
+    newAppPath = appDestination / givenName
+    shutil.move(filePath, newAppPath)
+    os.chmod(newAppPath, 0o755)
+    appPath = newAppPath
 
-    appPath = appDestination / givenName
-    os.chmod(appPath, 0o755)
-
-    # Detect icon if not set explicitly
-    if not iconPath:
-        if isFile and appPath.suffix == ".AppImage":
-            extracted_icon = extract_appimage_icon(appPath)
-            if extracted_icon:
-                iconPath = extracted_icon
-            else:
-                iconPath = "application-x-executable"
-        elif appPath.is_dir():
-            for ext in (".png", ".svg", ".xpm", ".ico"):
-                icons = list(appPath.glob(f"*{ext}"))
-                if icons:
-                    iconPath = str(icons[0])
-                    break
-            if not iconPath:
-                iconPath = "application-x-executable"
+    # Icon logic
+    if iconPath:
+        iconPath = str(Path(iconPath).expanduser().resolve())
+        if not Path(iconPath).is_file():
+            print(f"Error: Provided icon file does not exist: {iconPath}")
+            return
+    elif appPath.is_dir():
+        foundIcon = find_icon_in_folder(appPath)
+        if foundIcon:
+            iconPath = foundIcon
         else:
-            iconPath = "application-x-executable"
+            print("Error: No icon found in folder. Use --icon to specify one.")
+            return
+    else:
+        print("Error: You must provide an icon using --icon when registering a file.")
+        return
 
     # Create desktop entry
     desktopContent = f"""[Desktop Entry]
