@@ -24,16 +24,16 @@ Commands:
 
 
 def listApps():
-    appPathLocation = Path("~/Documents/Apps").expanduser().resolve()
+    appPathLocation = Path("~/.local/share/applications").expanduser().resolve()
     autoStartLocation = Path("~/.config/autostart").expanduser().resolve()
 
     print("Registered Apps:")
     for filePath in appPathLocation.glob("*.desktop"):
-        print(filePath.name, "\t\tautostart=false\t\tlocation=" + str(appPathLocation))
+        print(filePath.stem)
 
     print("\nAutostart Apps:")
     for filePath in autoStartLocation.glob("*.desktop"):
-        print(filePath.name, "\t\tautostart=true")
+        print(filePath.stem)
 
 
 def deleteApp(args):
@@ -42,16 +42,20 @@ def deleteApp(args):
         return
 
     appName = args[0]
-    appPathLocation = Path("~/Documents/Apps").expanduser().resolve()
-    autoStartLocation = Path("~/.config/autostart").expanduser().resolve()
-    locations = [appPathLocation, autoStartLocation]
 
-    for location in locations:
-        target = location / f"{appName}.desktop"
-        if target.exists():
-            target.unlink()
-            print(f"Successfully removed: {target}")
-            return
+    desktopPathLocation = Path("~/.local/share/applications").expanduser().resolve()
+
+    for app in desktopPathLocation.iterdir():
+        if app.stem == appName:
+           desktopPath = desktopPathLocation / app.name
+           os.remove(str(desktopPath))
+           appLocation = Path("~/Documents/Apps").expanduser().resolve() / app.stem
+           if appLocation.is_dir():
+              shutil.rmtree(appLocation)
+           else:
+              os.remove(appLocation)
+           print("Successfully removed", appName)
+           return;
 
     print(f"{appName} not found in known locations.")
 
@@ -103,22 +107,18 @@ def registerApp(args: list[str]):
     shutil.move(filePath, appDestination / givenName)
 
     appPath = appDestination / givenName
+    os.chmod(appPath, 0x755)
 
-    iconName = iconPath
+    if isFile:
+    	iconPath = appPath
 
-    # If icon is a file path, copy it
-    if Path(iconPath).exists():
-        iconDest = Path("~/.local/share/icons").expanduser().resolve()
-        iconDest.mkdir(parents=True, exist_ok=True)
-        copiedIcon = iconDest / Path(iconPath).name
-        shutil.copy(iconPath, copiedIcon)
-        iconName = copiedIcon.stem  # KDE finds by stem
+    # If icon is a file path
 
     # Create .desktop entry
     desktopContent = f"""[Desktop Entry]
-Name="{givenName}"
+Name={givenName}
 Exec="{appPath}"
-Icon="{iconName}"
+Icon="{iconPath}"
 Type=Application
 Terminal={'true' if terminalProgram else 'false'}
 Categories="{category}"
@@ -131,7 +131,6 @@ Categories="{category}"
     desktopFile.parent.mkdir(parents=True, exist_ok=True)
     desktopFile.write_text(desktopContent.strip() + '\n')
     os.chmod(desktopFile, 0o755)
-    os.chmod()
     print(f"Registered app: {givenName}")
 
 if __name__ == "__main__":
