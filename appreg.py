@@ -26,14 +26,15 @@ Commands:
 def listApps():
     appPathLocation = Path("~/.local/share/applications").expanduser().resolve()
     autoStartLocation = Path("~/.config/autostart").expanduser().resolve()
+    a = "autostart=false"
 
     print("Registered Apps:")
     for filePath in appPathLocation.glob("*.desktop"):
-        print(filePath.stem)
+        print(f"{filePath.stem:<50}{a:<20} location={appPathLocation}")
 
-    print("\nAutostart Apps:")
+    a = "autostart=true"
     for filePath in autoStartLocation.glob("*.desktop"):
-        print(filePath.stem)
+         print(f"{filePath.stem:<50}{a:<20} location={appPathLocation}")
 
 
 def deleteApp(args):
@@ -42,14 +43,16 @@ def deleteApp(args):
         return
 
     appName = args[0]
-
     desktopPathLocation = Path("~/.local/share/applications").expanduser().resolve()
+
+    confirm: str = input("Are you sure you want to delete", appName)
+    if not confirm.count('Y'): return
 
     for app in desktopPathLocation.iterdir():
         if app.stem == appName:
             desktopPath = desktopPathLocation / app.name
             os.remove(str(desktopPath))
-            appLocation = Path("~/Documents/Apps").expanduser().resolve() / app.stem
+            appLocation = Path("~/Applications").expanduser().resolve() / app.stem
             if appLocation.is_dir():
                 shutil.rmtree(appLocation)
             else:
@@ -57,15 +60,24 @@ def deleteApp(args):
             print("Successfully removed", appName)
             return
 
-    print(f"{appName} not found in known locations.")
+    print(f"{appName} was not found.")
 
 
-def find_icon_in_folder(folder: Path) -> str | None:
+def findIcon(folder):
     for ext in (".png", ".svg", ".xpm", ".ico"):
         icons = list(folder.glob(f"*{ext}"))
         if icons:
             return str(icons[0])
     return None
+
+
+def chmodRecursive(path, mode):
+    for root, dirs, files in os.walk(path):
+        for dirname in dirs:
+            os.chmod(os.path.join(root, dirname), mode)
+        for filename in files:
+            os.chmod(os.path.join(root, filename), mode)
+    os.chmod(path, mode)  # Don't forget to chmod the root itself
 
 
 def registerApp(args: list[str]):
@@ -86,7 +98,6 @@ def registerApp(args: list[str]):
         return
 
     givenName = filePath.stem
-    isFile = filePath.is_file()
 
     # Parse optional flags
     i = 1
@@ -110,11 +121,11 @@ def registerApp(args: list[str]):
         i += 1
 
     # Move app to destination
-    appDestination = Path("~/Documents/Apps").expanduser().resolve()
+    appDestination = Path("~/Applications").expanduser().resolve()
     appDestination.mkdir(parents=True, exist_ok=True)
     newAppPath = appDestination / givenName
     shutil.move(filePath, newAppPath)
-    os.chmod(newAppPath, 0o755)
+    os.chmod(newAppPath, 0o755) if newAppPath.is_file() else chmodRecursive(newAppPath, 0o755)
     appPath = newAppPath
 
     # Icon logic
@@ -124,7 +135,7 @@ def registerApp(args: list[str]):
             print(f"Error: Provided icon file does not exist: {iconPath}")
             return
     elif appPath.is_dir():
-        foundIcon = find_icon_in_folder(appPath)
+        foundIcon = findIcon(appPath)
         if foundIcon:
             iconPath = foundIcon
         else:
@@ -137,11 +148,11 @@ def registerApp(args: list[str]):
     # Create desktop entry
     desktopContent = f"""[Desktop Entry]
 Name={givenName}
-Exec="{appPath}"
-Icon="{iconPath}"
+Exec={appPath}
+Icon={iconPath}
 Type=Application
 Terminal={'true' if terminalProgram else 'false'}
-Categories="{category}"
+Categories={category}
 {"X-GNOME-Autostart-enabled=true" if autostart else ""}
 {"Hidden=false" if autostart else ""}
 {"NoDisplay=false" if autostart else ""}
@@ -160,16 +171,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     command = sys.argv[1]
-
     match command:
-        case "register":
-            registerApp(sys.argv[2:])
-        case "remove":
-            deleteApp(sys.argv[2:])
-        case "list":
-            listApps()
-        case "help":
-            displayHelp()
+        case "register": registerApp(sys.argv[2:])
+        case "remove": deleteApp(sys.argv[2:])
+        case "list": listApps()
+        case "help": displayHelp()
         case _:
             print(f"Unknown command: {command}\n\n")
             displayHelp()
