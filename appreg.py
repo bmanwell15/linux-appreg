@@ -34,7 +34,7 @@ def listApps():
 
     a = "autostart=true"
     for filePath in autoStartLocation.glob("*.desktop"):
-         print(f"{filePath.stem:<50}{a:<20} location={appPathLocation}")
+         print(f"{filePath.stem:<50}{a:<20} location={autoStartLocation}")
 
 
 def deleteApp(args):
