@@ -6,7 +6,16 @@ import shutil
 from pathlib import Path
 
 def displayHelp():
-    print("""App Registration Program for Kubuntu KDE
+    print("""@author Benjamin Manwell (bmanwell15)
+@version v1.0.0
+@date 7/5/2025
+
+Application Registration Program for Kubuntu KDE
+This command-line utility enables you to register both single-file executables (for example, AppImage bundles or standalone binaries) and entire application directories with the KDE Plasma application menu. By moving the target file or folder into the user's ~/Applications directory and generating a desktop entry file, it makes your custom applications immediately visible and launchable from the KDE "Start" menu. Although it was developed and tested on Kubuntu, it should work on any Linux distribution running the KDE Plasma desktop—such as KDE Neon, openSUSE KDE Plasma, Fedora KDE Spin, Arch Linux with KDE, and Linux Mint KDE Edition.
+
+To report an issue, please submit a new issue at https://github.com/bmanwell15/linux-appreg/issues
+
+IMPORTANT: DO NOT USE SUDO FOR THIS COMMAND!
 
 Commands:
     register <App-File/Folder>          Registers the app to allow it to be accessible to Kubuntu KDE
@@ -16,6 +25,7 @@ Commands:
             -n, --name <app name>       Sets the name of the app. If not set, the file/folder name will be used.
             -a, --autostart             Start the app automatically upon login.
             -t, --terminal              Run the app in a terminal window.
+            -e, --exec <executable>     If the provided app is a directory, then the executable file must be given RELATIVE TO THE APP FOLDER as well.
 
     remove <App-Name>                   Removes the specified app.
     list                                Lists the registered apps.
@@ -45,8 +55,8 @@ def deleteApp(args):
     appName = args[0]
     desktopPathLocation = Path("~/.local/share/applications").expanduser().resolve()
 
-    confirm: str = input("Are you sure you want to delete", appName)
-    if not confirm.count('Y'): return
+    confirm: str = input("Are you sure you want to delete '" + appName + "'? (y/n): ")
+    if not confirm.lower().count('y'): return
 
     for app in desktopPathLocation.iterdir():
         if app.stem == appName:
@@ -86,6 +96,7 @@ def registerApp(args: list[str]):
         return
 
     # Defaults
+    execPath = None
     category = "Utility"
     iconPath = None
     terminalProgram = False
@@ -114,10 +125,14 @@ def registerApp(args: list[str]):
             givenName = args[i]
         elif arg in ("-a", "--autostart"):
             autostart = True
+        elif arg in ("-e", "--exec"):
+            i += 1
+            execPath = args[i]
         elif arg in ("-t", "--terminal"):
             terminalProgram = True
         else:
             print(f"Unknown option: {arg}")
+            return
         i += 1
 
     # Move app to destination
@@ -127,6 +142,26 @@ def registerApp(args: list[str]):
     shutil.move(filePath, newAppPath)
     os.chmod(newAppPath, 0o755) if newAppPath.is_file() else chmodRecursive(newAppPath, 0o755)
     appPath = newAppPath
+
+    
+    if appPath.is_dir():
+        if not execPath:
+            print("Error: App is a folder. You must provide the path to the main executable using --exec.")
+            return
+        execCandidate = appPath / execPath
+        if not execCandidate.exists():
+            print(f"Error: Executable '{execPath}' not found inside the folder.")
+            return
+        if not os.access(execCandidate, os.X_OK):
+            print(f"Error: File '{execPath}' is not executable.")
+            return
+        mainExecutable = str(execCandidate)
+    else:
+        if not os.access(appPath, os.X_OK):
+            print(f"Error: File '{appPath}' is not executable.")
+            return
+        mainExecutable = str(appPath)
+
 
     # Icon logic
     if iconPath:
@@ -148,7 +183,7 @@ def registerApp(args: list[str]):
     # Create desktop entry
     desktopContent = f"""[Desktop Entry]
 Name={givenName}
-Exec={appPath}
+Exec={mainExecutable}
 Icon={iconPath}
 Type=Application
 Terminal={'true' if terminalProgram else 'false'}
