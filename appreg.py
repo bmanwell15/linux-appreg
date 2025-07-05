@@ -5,17 +5,24 @@ import sys
 import shutil
 from pathlib import Path
 
+
+VERSION = "v1.0.0"
+LAST_MODIFIED = "7/5/2025"
+
+def displayVersion():
+    print(VERSION)
+
 def displayHelp():
-    print("""@author Benjamin Manwell (bmanwell15)
-@version v1.0.0
-@date 7/5/2025
+    print(f"""@author Benjamin Manwell (bmanwell15)
+@version {VERSION}
+@date {LAST_MODIFIED}
 
 Application Registration Program for Kubuntu KDE
 This command-line utility enables you to register both single-file executables (for example, AppImage bundles or standalone binaries) and entire application directories with the KDE Plasma application menu. By moving the target file or folder into the user's ~/Applications directory and generating a desktop entry file, it makes your custom applications immediately visible and launchable from the KDE "Start" menu. Although it was developed and tested on Kubuntu, it should work on any Linux distribution running the KDE Plasma desktop—such as KDE Neon, openSUSE KDE Plasma, Fedora KDE Spin, Arch Linux with KDE, and Linux Mint KDE Edition.
 
 To report an issue, please submit a new issue at https://github.com/bmanwell15/linux-appreg/issues
 
-IMPORTANT: DO NOT USE SUDO FOR THIS COMMAND!
+**IMPORTANT: DO NOT USE SUDO FOR THIS COMMAND!**
 
 Commands:
     register <App-File/Folder>          Registers the app to allow it to be accessible to Kubuntu KDE
@@ -30,6 +37,7 @@ Commands:
     remove <App-Name>                   Removes the specified app.
     list                                Lists the registered apps.
     help                                Displays this menu.
+    version                             Returns the version number.
 """)
 
 
@@ -208,9 +216,10 @@ if __name__ == "__main__":
     command = sys.argv[1]
     match command:
         case "register": registerApp(sys.argv[2:])
-        case "remove": deleteApp(sys.argv[2:])
+        case "remove" | "delete": deleteApp(sys.argv[2:])
         case "list": listApps()
         case "help": displayHelp()
+        case "version" | "v" | "-v" | "--version": displayVersion()
         case _:
             print(f"Unknown command: {command}\n\n")
             displayHelp()

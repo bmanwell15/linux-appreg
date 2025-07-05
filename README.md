@@ -11,7 +11,25 @@ This command-line utility enables you to register both single-file executables (
 
 To report an issue or give a suggestion, please submit a new issue at [https://github.com/bmanwell15/linux-appreg/issues](https://github.com/bmanwell15/linux-appreg/issues).
 
-IMPORTANT: DO NOT USE SUDO FOR THIS COMMAND!
+**IMPORTANT: DO NOT USE SUDO FOR THIS COMMAND!**
+
+#### Version Log
+
+| Version | Date     | Description     |
+| :---    | :---     | :---            |
+| v1.0.0  | 7/5/2025 | Initial Release |
+
+---
+
+## Install
+
+To Install, move into the github directory and run the following command:
+
+```bash
+sh install.sh
+```
+
+Note that the install script will install [dos2unix](https://linux.die.net/man/1/dos2unix), a command that simply converts a file to a Unix friendly format.
 
 ---
 
@@ -49,14 +67,28 @@ Displays all currently registered applications, indicating whether each is set t
 ### `help`
 Shows this help text, describing available commands and options.
 
+### `version`
+Shows the version number and modify date of the application
+
 ---
 ## Examples
 
 ```bash
 # Register a basic .AppImage. Note the icon file is not automatically extracted.
-appreg register MyApp_x86_64.AppImage -n MyApp -I MyAppIcon.png
+appreg register ~/Downloads/MyApp_x86_64.AppImage -n MyApp -i MyAppIcon.png
 ```
 
 ```bash
+# Registers a folder as an application, with main.sh being the entering file.
+appreg register ~/Downloads/MyDirApp -n DirApp -i dirApp.png -e main.sh
+```
+
+```bash
+# Lists all applications registered with this command. Useful for finding the name of the app, which is needed to remove the application.
+appreg list
+```
+
+```bash
+# Removes an application that has been registered. Remove by the name of the application, not the path.
 appreg remove MyApp
 ```
